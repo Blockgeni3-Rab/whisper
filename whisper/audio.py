@@ -66,24 +66,23 @@ def pad_or_trim(array, length: int = N_SAMPLES, *, axis: int = -1):
     """
     Pad or trim the audio array to N_SAMPLES, as expected by the encoder.
     """
+    current_length = array.shape[axis]
+    length_diff = length - current_length
+
     if torch.is_tensor(array):
-        if array.shape[axis] > length:
-            array = array.index_select(
-                dim=axis, index=torch.arange(length, device=array.device)
-            )
-
-        if array.shape[axis] < length:
+        if length_diff < 0:
+            array = array.narrow(dim=axis, start=0, length=length)
+        elif length_diff > 0:
             pad_widths = [(0, 0)] * array.ndim
-            pad_widths[axis] = (0, length - array.shape[axis])
-            array = F.pad(array, [pad for sizes in pad_widths[::-1] for pad in sizes])
+            pad_widths[axis] = (0, length_diff)
+            array = F.pad(array, [pad for sizes in pad_widths[::-1] for pad in sizes], mode='constant', value=0)
     else:
-        if array.shape[axis] > length:
-            array = array.take(indices=range(length), axis=axis)
-
-        if array.shape[axis] < length:
+        if length_diff < 0:
+            array = array.take(indices=slice(0, length), axis=axis)
+        elif length_diff > 0:
             pad_widths = [(0, 0)] * array.ndim
-            pad_widths[axis] = (0, length - array.shape[axis])
-            array = np.pad(array, pad_widths)
+            pad_widths[axis] = (0, length_diff)
+            array = np.pad(array, pad_widths, mode='constant', value=0)
 
     return array
 
